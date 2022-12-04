@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "aoc-2023"
+  site-url: "https://astaff.github.io/aoc-2023"
+  description: "Solving Advent of Code 2023 one commit at a time."
+  repo-branch: main
+  repo-url: "https://github.com/astaff/aoc-2023"
