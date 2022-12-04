@@ -5,4 +5,4 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://astaff.github.io',
                 'git_url': 'https://github.com/astaff/aoc-2023',
                 'lib_path': 'aoc_2023'},
-  'syms': {'aoc_2023.core': {'aoc_2023.core.foo': ('core.html#foo', 'aoc_2023/core.py')}}}
+  'syms': {'aoc_2023.core': {'aoc_2023.core.read_input': ('core.html#read_input', 'aoc_2023/core.py')}}}
