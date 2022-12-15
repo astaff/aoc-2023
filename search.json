@@ -1,0 +1,247 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "aoc-2023",
+    "section": "",
+    "text": "This file will become your README and also the index of your documentation."
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "aoc-2023",
+    "section": "Install",
+    "text": "Install\npip install aoc_2023"
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "aoc-2023",
+    "section": "How to use",
+    "text": "How to use\nFill me in please! Don’t forget code examples:\n\n1+1\n\n2"
+  },
+  {
+    "objectID": "distress_signal.html",
+    "href": "distress_signal.html",
+    "title": "Day 13: Distress Signal",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"[1,1,3,1,1]\n[1,1,5,1,1]\n\n[[1],[2,3,4]]\n[[1],4]\n\n[9]\n[[8,7,6]]\n\n[[4,4],4,4]\n[[4,4],4,4,4]\n\n[7,7,7,7]\n[7,7,7]\n\n[]\n[3]\n\n[[[]]]\n[[]]\n\n[1,[2,[3,[4,[5,6,7]]]],8,9]\n[1,[2,[3,[4,[5,6,0]]]],8,9]\"\"\"\n_test = core.read_input(\"../data/day_13.txt\")\n\n\ndef parse(s: str) -> list[tuple[list, list]]:\n    res = []\n    for pair in s.split(\"\\n\\n\"):\n        a, b = pair.split(\"\\n\")\n        res += [(eval(a), eval(b))]\n    return res\n\n\ndef ordered(a: list | int, b: list | int) -> bool | None:\n    if isinstance(a, int) and isinstance(b, int):\n        if a == b:\n            return None\n        return a < b\n    if isinstance(a, list) and isinstance(b, list):\n        for x, y in zip(a, b):\n            if (value := ordered(x, y)) is not None:\n                return value\n        if len(a) == len(b):\n            return None\n        return len(a) < len(b)\n    if isinstance(a, list) and isinstance(b, int):\n        return ordered(a, [b])\n    if isinstance(a, int) and isinstance(b, list):\n        return ordered([a], b)\n\n\ndef part_1(s: str) -> int:\n    return sum(\n        (i + 1)\n        for i, (a, b) in enumerate(parse(s))\n        if ordered(a, b))\n\n\npart_1(_example)\n\n13\n\n\n\npart_1(_test)\n\n6072\n\n\n\nimport functools\n\n\ndef part_2(s: str) -> int:\n    divider_packets = [[[2]], [[6]]]\n    packets = sum([list(item) for item in parse(s)], []) + divider_packets\n    packets = sorted(\n        packets,\n        key=functools.cmp_to_key(lambda a, b: -1 if ordered(a, b) else 1),\n        reverse=False)\n    return functools.reduce(\n        lambda acc, packet: acc * (packets.index(packet) + 1),\n        divider_packets,\n        1)\n\n\npart_2(_example)\n\n140\n\n\n\npart_2(_test)\n\n22184"
+  },
+  {
+    "objectID": "beacon_exclusion_zone.html",
+    "href": "beacon_exclusion_zone.html",
+    "title": "Day 15: Beacon Exclusion Zone",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"Sensor at x=2, y=18: closest beacon is at x=-2, y=15\nSensor at x=9, y=16: closest beacon is at x=10, y=16\nSensor at x=13, y=2: closest beacon is at x=15, y=3\nSensor at x=12, y=14: closest beacon is at x=10, y=16\nSensor at x=10, y=20: closest beacon is at x=10, y=16\nSensor at x=14, y=17: closest beacon is at x=10, y=16\nSensor at x=8, y=7: closest beacon is at x=2, y=10\nSensor at x=2, y=0: closest beacon is at x=2, y=10\nSensor at x=0, y=11: closest beacon is at x=2, y=10\nSensor at x=20, y=14: closest beacon is at x=25, y=17\nSensor at x=17, y=20: closest beacon is at x=21, y=22\nSensor at x=16, y=7: closest beacon is at x=15, y=3\nSensor at x=14, y=3: closest beacon is at x=15, y=3\nSensor at x=20, y=1: closest beacon is at x=15, y=3\"\"\"\n_test = core.read_input(\"../data/day_15.txt\")\n\n\nimport re\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Position:\n    x: int\n    y: int\n\n        \ndef manhattan_distance(a: Position, b: Position):\n    return abs(a.x - b.x) + abs(a.y - b.y)\n        \n\ndef intersection(sensor: Position, beacon: Position, y: int) -> tuple[int, int] | None:\n    distance = manhattan_distance(sensor, beacon)\n    if sensor.y - distance <= y <= sensor.y + distance:\n        dx = distance - abs(y - sensor.y)\n        return tuple(sorted([sensor.x - dx, sensor.x + dx]))\n    return None\n\n\ndef parse(s: str) -> list[tuple[Position, Position]]:\n    acc = []\n    for line in s.split(\"\\n\"):\n        if not line:\n            continue\n        match = re.search(r\".*x=(-?\\d+), y=(-?\\d+).*x=(-?\\d+), y=(-?\\d+)\", line)\n        acc += [(Position(int(match[1]), int(match[2])), Position(int(match[3]), int(match[4])))]\n    return acc\n\n\nimport functools\n\n\ndef intersections(pairs: list[tuple[Position, Position]], a: int, b: int) -> list[list[tuple[int, int]]]:\n    acc = []    \n    intervals = [\n        sorted([\n            interval for sensor, beacon in pairs\n            if (interval := intersection(sensor, beacon, y))\n        ])\n        for y in range(a, b + 1)\n    ]\n    \n    def reducer(acc, value):\n        if not acc:\n            return [value]\n        if acc[-1][1] >= value[0] - 1:\n            return acc[:-1] + [(min(acc[-1][0], value[0]), max(acc[-1][1], value[1]))]\n        else:\n            return acc + [value]\n    \n    return [functools.reduce(reducer, row, []) for row in intervals]\n\n\ndef part_1(s: str, y: int) -> int:\n    acc = []\n    pairs = parse(s)\n    intervals, *_ = intersections(parse(s), y, y)\n    assert not _\n\n    beacons = set(\n        beacon.x for _, beacon in pairs\n        if beacon.y == y and any(a <= beacon.x <= b for a, b in intervals)\n    )\n\n    return sum(b - a + 1 for a, b in intervals) - len(beacons)\n\n\npart_1(_example, y=10)\n\n26\n\n\n\npart_1(_test, y=2000000)\n\n4717631"
+  },
+  {
+    "objectID": "beacon_exclusion_zone.html#part-2",
+    "href": "beacon_exclusion_zone.html#part-2",
+    "title": "Day 15: Beacon Exclusion Zone",
+    "section": "Part 2",
+    "text": "Part 2\n\nimport asyncio\nimport concurrent.futures\n\n\nasync def part_2(s: str, min_value: int, max_value: int, num_workers: int) -> int:\n    loop = asyncio.get_running_loop()\n    batch_size = (max_value - min_value) // num_workers\n    pairs = parse(s)\n    with concurrent.futures.ProcessPoolExecutor() as pool:\n        chunks = await asyncio.gather(*[\n            loop.run_in_executor(\n                pool,\n                intersections,\n                pairs,\n                min_value+i*batch_size,\n                min(min_value+(i+1)*batch_size - 1, max_value))\n            for i in range(num_workers)\n        ])\n    intervals = sum(chunks, [])\n    beacon_positions = [\n        ((a[1] + b[0]) // 2, i)\n        for i, (a, b) in [\n            (i, interval)\n            for i, interval in enumerate(intervals)\n            if len(interval) == 2\n        ]\n    ]\n    x, y = beacon_positions[0]\n    return x * 4_000_000 + y\n\n\nawait part_2(_example, 0, 20, num_workers=1)\n\n56000011\n\n\n\nawait part_2(_test, 0, 4_000_000, num_workers=16)\n\n13197439355220"
+  },
+  {
+    "objectID": "tuning_trouble.html",
+    "href": "tuning_trouble.html",
+    "title": "Day 6: Tuning Trouble",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\nexamples = [\n    \"mjqjpqmgbljsphdztnvjfqwrcgsmlb\",\n    \"bvwbjplbgvbhsrlpgdmjqwftvncz\",\n    \"nppdvjthqldpwncqszvftbrmjlhg\",\n    \"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg\",\n    \"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw\"\n]\ntest = core.read_input(\"../data/day_6.txt\")\n\n\ndef find_unique_sequence(s: str, length: int) -> int:\n    \"\"\"Returns the first occurance of the substring of a given length\n    that has all characters unique.\"\"\"\n    for index in range(0, len(s) - length):\n        if len(set(s[index:index + length])) == length:\n            return index\n    raise ValueError(\n        f\"{s} doesnt have a substring of length {length} with all unique characters.\"\n    )\n\n\ndef part_1(s: str) -> int:\n    return find_unique_sequence(s, 4) + 4\n\n\n[part_1(example) for example in examples]\n\n[7, 5, 6, 10, 11]\n\n\n\npart_1(test)\n\n1287"
+  },
+  {
+    "objectID": "tuning_trouble.html#part-2",
+    "href": "tuning_trouble.html#part-2",
+    "title": "Day 6: Tuning Trouble",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    return find_unique_sequence(s, 14) + 14\n\n\n[part_2(example) for example in examples]\n\n[19, 23, 23, 29, 26]\n\n\n\npart_2(test)\n\n3716"
+  },
+  {
+    "objectID": "cathode-ray_tube.html",
+    "href": "cathode-ray_tube.html",
+    "title": "Day 10: Cathode-Ray Tube",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"addx 15\naddx -11\naddx 6\naddx -3\naddx 5\naddx -1\naddx -8\naddx 13\naddx 4\nnoop\naddx -1\naddx 5\naddx -1\naddx 5\naddx -1\naddx 5\naddx -1\naddx 5\naddx -1\naddx -35\naddx 1\naddx 24\naddx -19\naddx 1\naddx 16\naddx -11\nnoop\nnoop\naddx 21\naddx -15\nnoop\nnoop\naddx -3\naddx 9\naddx 1\naddx -3\naddx 8\naddx 1\naddx 5\nnoop\nnoop\nnoop\nnoop\nnoop\naddx -36\nnoop\naddx 1\naddx 7\nnoop\nnoop\nnoop\naddx 2\naddx 6\nnoop\nnoop\nnoop\nnoop\nnoop\naddx 1\nnoop\nnoop\naddx 7\naddx 1\nnoop\naddx -13\naddx 13\naddx 7\nnoop\naddx 1\naddx -33\nnoop\nnoop\nnoop\naddx 2\nnoop\nnoop\nnoop\naddx 8\nnoop\naddx -1\naddx 2\naddx 1\nnoop\naddx 17\naddx -9\naddx 1\naddx 1\naddx -3\naddx 11\nnoop\nnoop\naddx 1\nnoop\naddx 1\nnoop\nnoop\naddx -13\naddx -19\naddx 1\naddx 3\naddx 26\naddx -30\naddx 12\naddx -1\naddx 3\naddx 1\nnoop\nnoop\nnoop\naddx -9\naddx 18\naddx 1\naddx 2\nnoop\nnoop\naddx 9\nnoop\nnoop\nnoop\naddx -1\naddx 2\naddx -37\naddx 1\naddx 3\nnoop\naddx 15\naddx -21\naddx 22\naddx -6\naddx 1\nnoop\naddx 2\naddx 1\nnoop\naddx -10\nnoop\nnoop\naddx 20\naddx 1\naddx 2\naddx 2\naddx -6\naddx -11\nnoop\nnoop\nnoop\"\"\"\n\n_test = core.read_input(\"../data/day_10.txt\")\n\n\nfrom functools import reduce\n\n\ndef process_command(acc: list[int], command: str) -> list[int]:\n    if command == \"noop\":\n        return acc + [acc[-1]]\n    else:\n        operator, value_str = command.split(\" \")\n        value = int(value_str)\n        return acc + [acc[-1], acc[-1] + value]\n\n    \ndef part_1(s: str) -> int:\n    states = [0] + reduce(process_command, s.split(\"\\n\"), [1])\n    return sum(\n        register * i\n        for i, register in enumerate(states)\n        if i in (20, 60, 100, 140, 180, 220)\n    )\n\n\npart_1(_example)\n\n13140\n\n\n\npart_1(_test)\n\n15120"
+  },
+  {
+    "objectID": "cathode-ray_tube.html#part-2",
+    "href": "cathode-ray_tube.html#part-2",
+    "title": "Day 10: Cathode-Ray Tube",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef display(pixels: list[int]):\n    screen = [[\".\" for _ in range(40)] for _ in range(6)]\n    for pixel in pixels:\n        screen[pixel // 40][pixel % 40] = \"#\"\n    print(\"\\n\".join(\"\".join(row) for row in screen))\n\n\ndef part_2(s: str) -> int:\n    sprite_positions = reduce(process_command, s.split(\"\\n\"), [1])\n    active_pixels = [i % 240 for i in range(len(sprite_positions))]\n    return [\n        pixel\n        for sprite, pixel in zip(sprite_positions, active_pixels)\n        if abs(sprite - (pixel % 40)) <= 1\n    ]\n\n\ndisplay(part_2(_example))\n\n##..##..##..##..##..##..##..##..##..##..\n###...###...###...###...###...###...###.\n####....####....####....####....####....\n#####.....#####.....#####.....#####.....\n######......######......######......####\n#######.......#######.......#######.....\n\n\n\ndisplay(part_2(_test))\n\n###..#..#.###....##.###..###..#.....##..\n#..#.#.#..#..#....#.#..#.#..#.#....#..#.\n#..#.##...#..#....#.###..#..#.#....#..#.\n###..#.#..###.....#.#..#.###..#....####.\n#.#..#.#..#....#..#.#..#.#....#....#..#.\n#..#.#..#.#.....##..###..#....####.#..#."
+  },
+  {
+    "objectID": "monkey_in_the_middle.html",
+    "href": "monkey_in_the_middle.html",
+    "title": "Day 11: Monkey in the Middle",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"Monkey 0:\n  Starting items: 79, 98\n  Operation: new = old * 19\n  Test: divisible by 23\n    If true: throw to monkey 2\n    If false: throw to monkey 3\n\nMonkey 1:\n  Starting items: 54, 65, 75, 74\n  Operation: new = old + 6\n  Test: divisible by 19\n    If true: throw to monkey 2\n    If false: throw to monkey 0\n\nMonkey 2:\n  Starting items: 79, 60, 97\n  Operation: new = old * old\n  Test: divisible by 13\n    If true: throw to monkey 1\n    If false: throw to monkey 3\n\nMonkey 3:\n  Starting items: 74\n  Operation: new = old + 3\n  Test: divisible by 17\n    If true: throw to monkey 0\n    If false: throw to monkey 1\"\"\"\n_test = core.read_input(\"../data/day_11.txt\")\n\n\nfrom dataclasses import dataclass\nfrom typing import Callable\n\n\n@dataclass(frozen=True)\nclass Monkey:\n    index: int\n    items: list[str]\n    operation: Callable[int, ...]\n    divisible_by: int\n    on_true: int\n    on_false: int\n\n\nimport math\n\n\ndef parse_monkey(s: str) -> Monkey:\n    lines = s.split(\"\\n\")\n    index = int(lines[0].strip()[len(\"Monkey\"):-1])\n    items = [int(item) for item in lines[1].strip()[len(\"Starting items:\"):].split(\", \")]\n    operation = lines[2].strip()[len(\"Operation: new = \"):]\n    divisible_by = int(lines[3].strip()[len(\"Test:  divisible by\"):])\n    on_true = int(lines[4].strip()[len(\"If true: throw to monkey \"):])\n    on_false = int(lines[5].strip()[len(\"If false: throw to monkey \")])\n    operation = eval(f\"lambda old: {operation}\")\n\n    return Monkey(\n        index=index,\n        items=items,\n        operation=operation,\n        divisible_by=divisible_by,\n        on_true=on_true,\n        on_false=on_false) \n\n\ndef parse(s: str) -> list[Monkey]:\n    monkeys = [parse_monkey(monkey) for monkey in s.split(\"\\n\\n\")]\n    return monkeys\n\n\ndef calculate(monkey, item, scale):\n    return (value := math.trunc(monkey.operation(item) // scale), (value % monkey.divisible_by == 0))\n\n\ndef monkey_business(monkeys: list[Monkey], num_rounds: int, scale: float) -> int:\n    # Calculate monkey business :-)\n    counters = [0] * len(monkeys)\n    \n    limit = 1\n    for monkey in monkeys:\n        limit *= monkey.divisible_by\n    \n    for round_number in range(num_rounds):\n        for i, monkey in enumerate(monkeys):\n            counters[i] += len(monkey.items)\n            items = [\n                # limit prevents from growing uncontrollably\n                # while retaining ability to test for divisibility\n                # down the road.\n                calculate(monkey, int(item) % limit, scale)\n                for item in monkey.items\n            ]\n            monkey.items.clear()\n            for value, is_divisible in items:\n                if is_divisible:\n                    monkeys[monkey.on_true].items.append(value)\n                else:\n                    monkeys[monkey.on_false].items.append(value)\n    first, second, *_ = sorted(counters, reverse=True)\n    return first * second\n\n\ndef part_1(s: str) -> int:\n    monkeys = parse(s)\n    return monkey_business(monkeys, 20, 3)\n\n\npart_1(_example)\n\n10605\n\n\n\npart_1(_test)\n\n182293"
+  },
+  {
+    "objectID": "monkey_in_the_middle.html#part-2",
+    "href": "monkey_in_the_middle.html#part-2",
+    "title": "Day 11: Monkey in the Middle",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    monkeys = parse(s)\n    return monkey_business(monkeys, 10000, 1)\n\n\npart_2(_example)\n\n2713310158\n\n\n\npart_2(_test)\n\n54832778815"
+  },
+  {
+    "objectID": "rope_bridge.html",
+    "href": "rope_bridge.html",
+    "title": "Day 9: Rope Bridge",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"R 4\nU 4\nL 3\nD 1\nR 4\nD 1\nL 5\nR 2\"\"\"\n_test = core.read_input(\"../data/day_9.txt\")"
+  },
+  {
+    "objectID": "rope_bridge.html#part-1",
+    "href": "rope_bridge.html#part-1",
+    "title": "Day 9: Rope Bridge",
+    "section": "Part 1",
+    "text": "Part 1\n\ndef part_1(s: str) -> int:\n    return len(unique(execute_commands([Position(x=0, y=0) for _ in range(2)], s)))\n\n\npart_1(_example)\n\n13\n\n\n\npart_1(_test)\n\n6332"
+  },
+  {
+    "objectID": "rope_bridge.html#part-2",
+    "href": "rope_bridge.html#part-2",
+    "title": "Day 9: Rope Bridge",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    return len(unique(execute_commands([Position(x=0, y=0) for _ in range(10)], s)))\n\n\npart_2(_example)\n\n1\n\n\n\npart_2(_test)\n\n2511"
+  },
+  {
+    "objectID": "hill_climbing_algorithm.html",
+    "href": "hill_climbing_algorithm.html",
+    "title": "Day 12: Hill Climbing Algorithm",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"Sabqponm\nabcryxxl\naccszExk\nacctuvwj\nabdefghi\"\"\"\n_test = core.read_input(\"../data/day_12.txt\")\n\n\nPosition = tuple[int, int]\n\n\nimport string\n\n\ndef parse(s: str) -> tuple[int, int, list[list[int]]]:\n    heights = {\n        letter: i\n        for i, letter in enumerate(string.ascii_lowercase)\n    }\n\n    start: tuple[int, int] | None = None\n    finish: tuple[int, int] | None = None\n    \n    lines = s.split(\"\\n\")\n    topo_map: list[list[int | None]] = [\n        [None for _ in range(len(line))]\n        for line in lines\n    ]\n\n    for i, line in enumerate(lines):\n        for j, char in enumerate(line):\n            if char == \"S\":\n                start = (i, j)\n                topo_map[i][j] = heights[\"a\"]\n            elif char == \"E\":\n                finish = (i, j)\n                topo_map[i][j] = heights[\"z\"]\n            else:\n                topo_map[i][j] = heights[char]\n\n    return start, finish, topo_map\n\n\ndef dijkstra(graph: dict[Position, set[Position]], a: Position, b: list[Position]) -> int:\n    dist = {v: 0 if v == a else None for v in graph}\n    prev = {v: None for v in graph}\n\n    unvisited = set(graph)\n    \n    while unvisited:\n        candidates = [\n            (dist[v], v)\n            for v in unvisited\n            if dist[v] is not None\n        ]\n        if not candidates:\n            break\n        _, current = min(candidates)\n        unvisited.remove(current)\n\n        for neighbor in graph[current]:\n            if neighbor in unvisited:\n                alt = dist[current] + 1\n                if dist[neighbor] is None or alt < dist[neighbor]:\n                    dist[neighbor] = alt\n                    prev[neighbor] = current\n\n    return min(dist[v] for v in b if dist[v] is not None)\n\n\ndef to_graph(topo_map: list[list[int]]) -> dict[Position, set[Position]]:\n    m = len(topo_map)\n    n = len(topo_map[0])\n    \n    graph = {(i, j): set() for i in range(m) for j in range(n)}\n    \n    for i, row in enumerate(topo_map):\n        for j, height in enumerate(row):\n            # Reverse direction in the graph to transform the problem\n            # from having multiple starts (Part 2) to having multiple finishes\n            if i > 0 and (topo_map[i - 1][j] <= height + 1):\n                graph[(i - 1, j)].add((i, j))\n            if i < m - 1 and (topo_map[i + 1][j] <= height + 1):\n                graph[(i + 1, j)].add((i, j))\n            if j > 0 and (topo_map[i][j - 1] <= height + 1):\n                graph[(i, j - 1)].add((i, j))\n            if j < n - 1 and (topo_map[i][j + 1] <= height + 1):\n                graph[(i, j + 1)].add((i , j))\n                \n    return graph\n\n\ndef part_1(s: str) -> int:\n    start, finish, topo_map = parse(s)\n    graph = to_graph(topo_map)\n    \n    # We are reversing the direction of the graph, so\n    # our starts and finish need to be swapped.\n    return dijkstra(graph, finish, [start])\n\n\npart_1(_example)\n\n31\n\n\n\npart_1(_test)\n\n449"
+  },
+  {
+    "objectID": "hill_climbing_algorithm.html#part-2",
+    "href": "hill_climbing_algorithm.html#part-2",
+    "title": "Day 12: Hill Climbing Algorithm",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    start, finish, topo_map = parse(s)\n    graph = to_graph(topo_map)\n    candidates = [(i, j) for i in range(len(topo_map)) for j in range(len(topo_map[i])) if topo_map[i][j] == 0]\n\n    # Because we are reversing the direction of the graph\n    # we can treat our candidates as multiple finishes instead of starts\n    # and calculate the distance in a single run of Dijkstra.\n    return dijkstra(graph, finish, candidates)\n\n\npart_2(_example)\n\n29\n\n\n\npart_2(_test)\n\n443"
+  },
+  {
+    "objectID": "calorie_counting.html",
+    "href": "calorie_counting.html",
+    "title": "Day 1: Calorie Counting",
+    "section": "",
+    "text": "def totals(s: str) -> list[int]:\n    return [\n        sum(int(line) for line in group.split(\"\\n\"))\n        for group in s.split(\"\\n\\n\")\n    ]\n\n\nfrom aoc_2023 import core\n\n\n_example = \"\"\"1000\n2000\n3000\n\n4000\n\n5000\n6000\n\n7000\n8000\n9000\n\n10000\"\"\"\n_test = core.read_input(\"../data/day_1.txt\")\n\n\nmax(totals(_example))\n\n24000\n\n\n\nmax(totals(_test))\n\n71300"
+  },
+  {
+    "objectID": "calorie_counting.html#part-2",
+    "href": "calorie_counting.html#part-2",
+    "title": "Day 1: Calorie Counting",
+    "section": "Part 2",
+    "text": "Part 2\n\nsum(sorted(totals(_example), reverse=True)[:3])\n\n45000\n\n\n\nsum(sorted(totals(_test), reverse=True)[:3])\n\n209691"
+  },
+  {
+    "objectID": "supply_stacks.html",
+    "href": "supply_stacks.html",
+    "title": "Day 5: Supply Stacks",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"\n    [D]    \n[N] [C]    \n[Z] [M] [P]\n 1   2   3 \n\nmove 1 from 2 to 1\nmove 3 from 1 to 3\nmove 2 from 2 to 1\nmove 1 from 1 to 2\"\"\"[1:]  # NOTE: the original exapmle doesn't contain a leading \\n.\n_test = core.read_input(\"../data/day_5.txt\")\n\n\nimport re\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Move:\n    num: int\n    src: int\n    dst: int\n\n\ndef parse(s: str) -> tuple[list[list[str]], list[Move]]:\n    state, moves = s.split(\"\\n\\n\")\n    *rows, axis = state.split(\"\\n\")\n    n_cols = int([char for char in axis.split(\" \") if char][-1])\n\n    rows = [\n        [item if item != ' ' else None for item in row[1::4]]\n        for row in rows\n    ]\n    state = [[item for item in reversed(col) if item] for col in zip(*rows)]\n    \n    moves = [\n        Move(*[int(n) for n in match])\n        for match in re.findall(r\".+ (\\d+) .+ (\\d+) .+ (\\d+)\", moves)\n    ]\n\n    return state, moves\n\n\ndef part_1(s: str) -> str:\n    state, moves = parse(s)\n    for move in moves:\n        state[move.dst - 1].extend(reversed(state[move.src - 1][-move.num:]))\n        del state[move.src - 1][-move.num:]\n    return ''.join(stack[-1] for stack in state)\n\n\npart_1(_example)\n\n'CMZ'\n\n\n\npart_1(_test)\n\n'WCZTHTMPS'"
+  },
+  {
+    "objectID": "supply_stacks.html#part-2",
+    "href": "supply_stacks.html#part-2",
+    "title": "Day 5: Supply Stacks",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> str:\n    state, moves = parse(s)\n    for move in moves:\n        state[move.dst - 1].extend(state[move.src - 1][-move.num:])\n        del state[move.src - 1][-move.num:]\n    return ''.join(stack[-1] if stack else \" \" for stack in state)\n\n\npart_2(_example)\n\n'MCD'\n\n\n\npart_2(_test)\n\n'BLSGJSDTS'"
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "core",
+    "section": "",
+    "text": "source\n\nread_input\n\n read_input (filename:str)"
+  },
+  {
+    "objectID": "camp_cleanup.html",
+    "href": "camp_cleanup.html",
+    "title": "Day 4: Camp Cleanup",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"2-4,6-8\n2-3,4-5\n5-7,7-9\n2-8,3-7\n6-6,4-6\n2-6,4-8\"\"\"\n_test = core.read_input(\"../data/day_4.txt\")\n\n\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Interval:\n    a: int\n    b: int\n        \n\ndef interval(s: str) -> Interval:\n    return Interval(*[int(n) for n in s.split(\"-\")])\n\n\ndef pairs(s: str) -> tuple[str, str]:\n    return tuple(pair for pair in s.split(\",\"))\n\n\ndef intervals(s: str) -> list[tuple[Interval, Interval]]:\n    return [\n        tuple(interval(pair) for pair in pairs(line))\n        for line in s.split(\"\\n\")\n    ]\n\n\ndef contains(left: Interval, right: Interval) -> bool:\n    return (\n        ((left.a <= right.a <= left.b) and (left.a <= right.b <= left.b)) or\n        ((right.a <= left.a <= right.b) and (right.a <= left.b <= right.b))\n    )\n\n\ndef part_1(s: str) -> int:\n    return sum(int(contains(left, right)) for left, right in intervals(s))\n\n\npart_1(_example)\n\n2\n\n\n\npart_1(_test)\n\n534"
+  },
+  {
+    "objectID": "camp_cleanup.html#part-2",
+    "href": "camp_cleanup.html#part-2",
+    "title": "Day 4: Camp Cleanup",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef overlaps(left: Interval, right: Interval) -> bool:\n    return (\n        ((left.a <= right.a <= left.b) or (left.a <= right.b <= left.b)) or\n        ((right.a <= left.a <= right.b) or (right.a <= left.b <= right.b))\n    )\n\n\ndef part_2(s: str) -> int:\n    return sum(int(overlaps(left, right)) for left, right in intervals(s))\n\n\npart_2(_example)\n\n4\n\n\n\npart_2(_test)\n\n841"
+  },
+  {
+    "objectID": "rock_paper_scissors.html",
+    "href": "rock_paper_scissors.html",
+    "title": "Day 2: Rock Paper Scissors",
+    "section": "",
+    "text": "def to_item(x: str) -> str:\n    if x in (\"A\", \"X\"):\n        return \"rock\"\n    if x in (\"B\", \"Y\"):\n        return \"paper\"\n    if x in (\"C\", \"Z\"):\n        return \"scissors\"\n    if x in (\"rock\", \"paper\", \"scissors\"):\n        return x\n    raise ValueError(f\"Unsupported value: {x}\")\n\n\ndef score(first: str, second: str) -> int:\n    first = to_item(first)\n    second = to_item(second)\n\n    base = {\"rock\": 1, \"paper\": 2, \"scissors\": 3}\n\n    if (first == second):\n        return base[second] + 3\n    elif (\n        (first == 'rock' and second == 'scissors') or\n        (first == 'paper' and second == 'rock') or\n        (first == 'scissors' and second == 'paper')\n    ):\n        return base[second]\n    else:\n        return base[second] + 6\n\n\ndef part_1(s: str) -> int:\n    return sum(score(*line.split()) for line in s.split(\"\\n\") if line)\n\n\nfrom aoc_2023 import core\n\n\n_example = \"\"\"A Y\nB X\nC Z\"\"\"\n_test = core.read_input(\"../data/day_2.txt\")\n\n\npart_1(_example)\n\n15\n\n\n\npart_1(_test)\n\n13682"
+  },
+  {
+    "objectID": "rock_paper_scissors.html#part-2",
+    "href": "rock_paper_scissors.html#part-2",
+    "title": "Day 2: Rock Paper Scissors",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef to_result(x: str) -> str:\n    if x == \"X\":\n        return \"lose\"\n    if x == \"Y\":\n        return \"draw\"\n    if x == \"Z\":\n        return \"win\"\n    raise ValueError(f\"Unsupported value: {x}\")\n\n\ndef calculate_second(first: str, result: str) -> str:\n    first = to_item(first)\n    result = to_result(result)\n    if result == \"lose\":\n        if first == \"rock\":\n            return \"scissors\"\n        if first == \"paper\":\n            return \"rock\"\n        if first == \"scissors\":\n            return \"paper\"\n    elif result == \"win\":\n        if first == \"scissors\":\n            return \"rock\"\n        if first == \"rock\":\n            return \"paper\"\n        if first == \"paper\":\n            return \"scissors\"\n    elif result == \"draw\":\n        return first\n\n\ndef part_2(s: str) -> int:\n    res = 0\n    for line in s.split(\"\\n\"):\n        if not line:\n            continue\n        first, result = line.split(\" \")\n        second = calculate_second(first, result)\n        res += score(first, second)\n    return res\n\n\npart_2(_example)\n\n12\n\n\n\npart_2(_test)\n\n12881"
+  },
+  {
+    "objectID": "regolith_reservoir.html",
+    "href": "regolith_reservoir.html",
+    "title": "Day 14: Regolith Reservoir",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"498,4 -> 498,6 -> 496,6\n503,4 -> 502,4 -> 502,9 -> 494,9\"\"\"\n_test = core.read_input(\"../data/day_14.txt\")"
+  },
+  {
+    "objectID": "regolith_reservoir.html#part-1",
+    "href": "regolith_reservoir.html#part-1",
+    "title": "Day 14: Regolith Reservoir",
+    "section": "Part 1",
+    "text": "Part 1\n\nfrom typing import Callable\n\n\nPosition = tuple[int, int]\n\n\ndef update(scan: list[list[bool]], start: Position, finish: Position, value: bool) -> list[list[bool]]:\n    x_range, y_range = zip(start, finish)\n    x_range, y_range = sorted(x_range), sorted(y_range)\n    for x in range(x_range[0], x_range[1] + 1):\n        for y in range(y_range[0], y_range[1] + 1):\n            scan[x][y] = value\n    return scan\n\n\ndef parse(s: str) -> list[list[bool]]:\n    def _position(pos: str) -> tuple[int, int]:\n        x, y = pos.split(\",\")\n        return int(x), int(y)\n\n    positions = [\n        [\n            _position(position)\n            for position in line.split(\" -> \")\n        ]\n        for line in s.split(\"\\n\")\n    ]\n    max_x = max(position[0] for position in sum(positions, []))\n    max_y = max(position[1] for position in sum(positions, []))\n\n    # Ensure there is plenty of room for sand to trickle down and\n    # not run out of boundaries in X, and accomodate platfrom form\n    # part 2 in Y.\n    scan = [[False for _ in range(max_y + 3)] for _ in range(max_x * 2)]\n\n    for series in positions:\n        for start, finish in zip(series[:-1], series[1:]):\n            update(scan, start, finish, True)\n    \n    return scan\n\n\ndef run(scan: list[list[bool]], exit_condition: Callable[[int, int], bool]) -> int:\n    count = 0\n    x, y = 500, 0    \n    while True:\n        if exit_condition(x, y):\n            return count\n        if not scan[x][y + 1]:\n            y += 1\n        elif not scan[x - 1][y + 1]:\n            x -= 1\n            y += 1\n        elif not scan[x + 1][y + 1]:\n            x += 1\n            y += 1\n        else:\n            count += 1\n            update_scan(scan, (x, y), (x, y), True)\n            x, y = 500, 0\n\n\ndef part_1(s: str):\n    scan = parse(s)\n    max_y = len(scan[0]) - 1\n    return run(scan, lambda x, y: y == max_y)\n\n\npart_1(_example)\n\n24\n\n\n\npart_1(_test)\n\n1001"
+  },
+  {
+    "objectID": "regolith_reservoir.html#part-2",
+    "href": "regolith_reservoir.html#part-2",
+    "title": "Day 14: Regolith Reservoir",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str):\n    scan = parse(s)\n    max_x = len(scan) - 1\n    max_y = len(scan[0]) - 1\n    update(scan, (0, max_y), (max_x, max_y), True)\n\n    return run(scan, lambda x, y: (x, y) == (500, 0) and scan[x][y])\n\n\npart_2(_example)\n\n93\n\n\n\npart_2(_test)\n\n27976"
+  },
+  {
+    "objectID": "no_space_left_on_device.html",
+    "href": "no_space_left_on_device.html",
+    "title": "Day 7: No Space Left On Device",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"$ cd /\n$ ls\ndir a\n14848514 b.txt\n8504156 c.dat\ndir d\n$ cd a\n$ ls\ndir e\n29116 f\n2557 g\n62596 h.lst\n$ cd e\n$ ls\n584 i\n$ cd ..\n$ cd ..\n$ cd d\n$ ls\n4060174 j\n8033020 d.log\n5626152 d.ext\n7214296 k\"\"\"\n_test = core.read_input(\"../data/day_7.txt\")\n\n\nfrom typing import Optional\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass Node:\n    parent: Optional['Node']\n    name: str\n    size: int\n    children: dict[str, 'Node']\n\n\ndef update_tree(root: Node, current: Node, line: str) -> Node:\n    if line.startswith(\"$ ls\"):\n        return current\n    elif line.startswith(\"$ cd\"):\n        arg = line[5:]\n        if arg == \"/\":\n            return root\n        elif arg == \"..\":\n            return current.parent\n        else:\n            return current.children[arg]\n    else:\n        info, name = line.split(\" \")\n        if not name in current.children:\n            current.children[name] = Node(\n                parent=current,\n                name=name,\n                size=0 if info == \"dir\" else int(info),\n                children=dict())\n        return current\n                                             \n\ndef dfs(node: Node) -> list[Node]:\n    return [node] + sum([dfs(child) for child in node.children.values()], [])\n    \n    \ndef subtree_size(node: Node) -> int:\n    return sum(node.size for node in dfs(node))\n\n\ndef build_tree(s: str) -> Node:\n    current = root = Node(\n        parent=None,\n        name=\"/\",\n        size=0,\n        children=dict())\n    lines = [line for line in s.split(\"\\n\") if line]\n    for line in lines:\n        current = update_tree(root, current, line)\n    return root\n\n\ndef part_1(s: str) -> int:\n    root = build_tree(s)\n    return sum(\n        _size for node in dfs(root) \n        if (node.children) and ((_size := subtree_size(node)) <= 100000)\n    )\n\n\npart_1(_example)\n\n95437\n\n\n\npart_1(_test)\n\n1444896"
+  },
+  {
+    "objectID": "no_space_left_on_device.html#part-2",
+    "href": "no_space_left_on_device.html#part-2",
+    "title": "Day 7: No Space Left On Device",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    root = build_tree(s)\n    disk_size = 70000000\n    space_required = 30000000\n    min_size = space_required - (disk_size - subtree_size(root))\n    \n    return sorted([\n        _size for node in dfs(root)\n        if node.children and ((_size := subtree_size(node)) >= min_size)])[0]\n\n\npart_2(_example)\n\n24933642\n\n\n\npart_2(_test)\n\n404395"
+  },
+  {
+    "objectID": "rucksack_reorganization.html",
+    "href": "rucksack_reorganization.html",
+    "title": "Day 3: Rucksack Reorganization",
+    "section": "",
+    "text": "import string\nfrom functools import reduce\n\n\ndef common_item(items: list[str]) -> str:\n    def reducer(acc, x):\n        return acc.intersection(set(x))\n    first, *rest = items\n    return reduce(reducer, rest, set(first)).pop()\n\n\npriority = {\n    letter: priority\n    for letter, priority\n    in zip(string.ascii_letters, range(1, 53))\n}\n\n\ndef common_between_compartments(s: str) -> str:\n    half = len(s) // 2\n    first = s[:half]\n    second = s[half:]\n    return common_item([first, second])\n\n\ndef part_1(s: str) -> int:\n    lines = s.split(\"\\n\")\n    return sum(\n        priority[common_between_compartments(line)]\n        for line in lines\n    )\n\n\nfrom aoc_2023 import core\n\n\n_example = \"\"\"vJrwpWtwJgWrhcsFMMfFFhFp\njqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL\nPmmdzqPrVvPwwTWBwg\nwMqvLMZHhHMvwLHjbvcjnnSBnvTQFn\nttgJtRGJQctTZtZT\nCrZsJsPPZsGzwwsLwLmpwMDw\"\"\"\n_test = core.read_input(\"../data/day_3.txt\")\n\n\npart_1(_example)\n\n157\n\n\n\npart_1(_test)\n\n8243"
+  },
+  {
+    "objectID": "rucksack_reorganization.html#part-2",
+    "href": "rucksack_reorganization.html#part-2",
+    "title": "Day 3: Rucksack Reorganization",
+    "section": "Part 2",
+    "text": "Part 2\n\ndef part_2(s: str) -> int:\n    # Chunk into intervals of 3\n    lines = s.split(\"\\n\")\n    args = [iter(lines)] * 3\n    return sum(\n        priority[common_item(group)]\n        for group in zip(*args)\n    )\n\n\npart_2(_example)\n\n70\n\n\n\npart_2(_test)\n\n2631"
+  },
+  {
+    "objectID": "treetop_tree_house.html",
+    "href": "treetop_tree_house.html",
+    "title": "Day 8: Treetop Tree House",
+    "section": "",
+    "text": "from aoc_2023 import core\n\n\n_example = \"\"\"30373\n25512\n65332\n33549\n35390\"\"\"\n_test = core.read_input(\"../data/day_8.txt\")\n\n\nfrom typing import Sequence, Generator\n\n\ndef parse(s: str) -> list[list[int]]:\n    return [\n        [int(h) for h in line]\n        for line in s.split(\"\\n\")\n    ]\n\n\ndef transpose(x: list[list[int]]) -> list[list[int]]:\n    return list(zip(*x))\n\n\ndef visible_trees(trees: Sequence[tuple[int, int]]) -> Generator[int, None, None]:\n    max_h = -1\n    for i, h in trees:\n        if h > max_h:\n            yield i\n            max_h = h\n            \n            \n\ndef part_1(s: str) -> int:\n    trees = parse(s)\n    res = []\n    for i, row in enumerate(trees):\n        res += [(i, j) for j in visible_trees(enumerate(row))]\n        res += [(i, j) for j in visible_trees(reversed(list(enumerate(row))))]\n\n    for j, row in enumerate(transpose(trees)):\n        res += [(i, j) for i in visible_trees(enumerate(row))]\n        res += [(i, j) for i in visible_trees(reversed(list(enumerate(row))))]\n        \n    return len(set(res))\n\n\npart_1(_example)\n\n21\n\n\n\npart_1(_test)\n\n1801"
+  },
+  {
+    "objectID": "treetop_tree_house.html#part-2",
+    "href": "treetop_tree_house.html#part-2",
+    "title": "Day 8: Treetop Tree House",
+    "section": "Part 2",
+    "text": "Part 2\n\nfrom itertools import takewhile\n\ndef visible_range(trees: list[int], reference: int) -> int:\n    # NOTE: un-obscructed view until the end of line is the same\n    # as un-bsctructed view until the last tree in the line.\n    return min(len(trees), len(list(takewhile(lambda h: h < reference, trees))) + 1)\n\n\ndef part_2(s: str) -> int:\n    trees = parse(s)\n    trees_t = transpose(trees)\n    acc = []\n    for i in range(1, len(trees) - 1):\n        for j in range(1, len(trees_t) - 1):\n            reference = trees[i][j]\n            right = visible_range(trees[i][j+1:], reference)\n            left = visible_range(trees[i][j-1::-1], reference)\n            up = visible_range(trees_t[j][i-1::-1], reference)\n            down = visible_range(trees_t[j][i+1:], reference)\n            acc += [right * left * up * down]\n    return max(acc)\n\n\npart_2(_example)\n\n8\n\n\n\npart_2(_test)\n\n209880"
+  }
+]
